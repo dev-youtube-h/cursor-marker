@@ -1,0 +1,75 @@
+/* オーバーレイは常に GPU 合成されるレイヤーだけを動かす。
+   レイアウト・ペイントを毎フレーム起こさないのが滑らかさの肝。 */
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  pointer-events: none;
+  cursor: none;
+}
+
+#marker {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  will-change: transform;
+  transform: translate3d(-9999px, -9999px, 0);
+  contain: layout style size;
+}
+
+/* 最初のカーソル座標を受け取るまでは出さない */
+#marker.is-ready {
+  opacity: 1;
+}
+
+#core,
+#ring,
+#glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  will-change: transform, opacity;
+}
+
+#core {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color) 40%, transparent) 0%,
+    color-mix(in srgb, var(--color) 16%, transparent) 62%,
+    transparent 73%
+  );
+  border: max(2px, calc(var(--size) * 0.055)) solid
+    color-mix(in srgb, var(--color) 80%, transparent);
+  box-shadow:
+    0 0 calc(var(--size) * 0.3) color-mix(in srgb, var(--color) 45%, transparent),
+    inset 0 0 calc(var(--size) * 0.12) color-mix(in srgb, var(--color) 30%, transparent);
+}
+
+/* クリック時に広がるリング */
+#ring {
+  opacity: 0;
+  border: max(2px, calc(var(--size) * 0.05)) solid var(--color);
+}
+
+/* クリック時の発光 */
+#glow {
+  opacity: 0;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color) 75%, transparent) 0%,
+    color-mix(in srgb, var(--color) 25%, transparent) 55%,
+    transparent 72%
+  );
+}

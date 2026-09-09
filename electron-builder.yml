@@ -1,0 +1,50 @@
+appId: com.cursormarker.app
+productName: cursor-marker
+directories:
+  buildResources: build
+files:
+  - '!**/.vscode/*'
+  - '!src/**'
+  - '!.github/**'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+asarUnpack:
+  - resources/**
+  # ネイティブモジュール (uiohook-napi) は asar の外に置く必要がある
+  - '**/*.node'
+  - node_modules/uiohook-napi/**
+
+win:
+  executableName: cursor-marker
+  icon: build/icon.ico
+  target:
+    # インストーラー版
+    - target: nsis
+      arch:
+        - x64
+    # インストール不要の単体 exe
+    - target: portable
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  artifactName: ${name}-${version}-setup.${ext}
+
+portable:
+  artifactName: ${name}-${version}-portable.${ext}
+
+npmRebuild: false
+publish:
+  provider: github
+  owner: dev-youtube-h
+  repo: cursor-marker
+  releaseType: release
