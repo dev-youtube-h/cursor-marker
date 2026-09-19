@@ -30,6 +30,8 @@ win:
         - x64
 
 nsis:
+  # 自動更新は使わないので差分パッケージ (.blockmap) は作らない
+  differentialPackage: false
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
@@ -43,8 +45,5 @@ portable:
   artifactName: ${name}-${version}-portable.${ext}
 
 npmRebuild: false
-publish:
-  provider: github
-  owner: dev-youtube-h
-  repo: cursor-marker
-  releaseType: release
+# 公開は GitHub Actions 側で gh release により行う
+publish: null
