@@ -18,7 +18,7 @@ function SettingsPanel({ settings, clickFlashSupported, onChange }: Props): Reac
   const previewSize = Math.min(size, 84)
 
   return (
-    <div className="panel">
+    <>
       <div className="preview">
         <div
           className="preview__marker"
@@ -101,7 +101,7 @@ function SettingsPanel({ settings, clickFlashSupported, onChange }: Props): Reac
           既定値に戻す
         </button>
       </div>
-    </div>
+    </>
   )
 }
 

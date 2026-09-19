@@ -16,7 +16,7 @@ const marker: MarkerApi = {
   onCursor: (cb) => subscribe<[number, number]>('marker:cursor', cb),
   onClick: (cb) => subscribe<[]>('marker:click', cb),
   onLeave: (cb) => subscribe<[]>('marker:leave', cb),
-  setPanelOpen: (open) => ipcRenderer.send('marker:panel', open),
+  setPanelHeight: (height) => ipcRenderer.send('marker:panel-height', height),
   minimize: () => ipcRenderer.send('window:minimize'),
   close: () => ipcRenderer.send('window:close')
 }

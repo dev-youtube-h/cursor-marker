@@ -30,8 +30,8 @@ declare global {
     onClick: (cb: () => void) => () => void
     /** オーバーレイ用: カーソルが別のディスプレイへ移った (マーカーを消す) */
     onLeave: (cb: () => void) => () => void
-    /** 設定パネルの開閉に合わせてウィンドウ高さを変える */
-    setPanelOpen: (open: boolean) => void
+    /** 設定パネルの中身の高さに合わせてウィンドウ高さを変える (0 でバーのみ) */
+    setPanelHeight: (height: number) => void
     minimize: () => void
     close: () => void
   }

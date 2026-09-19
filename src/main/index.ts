@@ -15,7 +15,8 @@ import {
 
 const CONTROL_WIDTH = 320
 const BAR_HEIGHT = 54
-const PANEL_HEIGHT = 378
+/** 設定パネルを開いたときの上限 (レンダラが実測値を送ってくる) */
+const MAX_PANEL_HEIGHT = 720
 
 // 追従が重くならないよう、レンダラのスロットリングを止めておく
 app.commandLine.appendSwitch('disable-background-timer-throttling')
@@ -133,8 +134,10 @@ app.whenReady().then(async () => {
     }
   )
 
-  ipcMain.on('marker:panel', (_event, open: boolean) => {
-    setControlHeight(open ? PANEL_HEIGHT : BAR_HEIGHT)
+  // レンダラが実測した中身の高さに合わせる (フォント差でスクロールバーが出ないように)
+  ipcMain.on('marker:panel-height', (_event, panelHeight: number) => {
+    const height = panelHeight > 0 ? BAR_HEIGHT + Math.round(panelHeight) : BAR_HEIGHT
+    setControlHeight(Math.min(MAX_PANEL_HEIGHT, Math.max(BAR_HEIGHT, height)))
   })
 
   ipcMain.on('window:minimize', () => controlWindow?.minimize())
