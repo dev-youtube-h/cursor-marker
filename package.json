@@ -1,6 +1,6 @@
 {
   "name": "cursor-marker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "マウスカーソルにマーカーを追従させるデスクトップアプリ",
   "main": "./out/main/index.js",
   "author": "dev-youtube-h",
