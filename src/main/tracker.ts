@@ -86,8 +86,8 @@ export async function initHook(): Promise<boolean> {
 }
 
 /**
- * フックスレッドの起動。start / stop を繰り返すと不安定な環境があるため、
- * 一度起動したらアプリ終了まで動かしたままにし、配信側で ON/OFF を判断する。
+ * フックスレッドの起動。OS 全体の入力を拾うため、
+ * 「クリック時に光る」が有効なときだけ起動する (呼び出し側で判断)。
  */
 export function startHook(): void {
   if (!uiohook || hookStarted) return

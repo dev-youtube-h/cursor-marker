@@ -1,10 +1,10 @@
 {
   "name": "cursor-marker",
   "version": "1.0.0",
-  "description": "\u30de\u30a6\u30b9\u30ab\u30fc\u30bd\u30eb\u306b\u30de\u30fc\u30ab\u30fc\u3092\u8ffd\u5f93\u3055\u305b\u308b\u30c7\u30b9\u30af\u30c8\u30c3\u30d7\u30a2\u30d7\u30ea",
+  "description": "マウスカーソルにマーカーを追従させるデスクトップアプリ",
   "main": "./out/main/index.js",
-  "author": "example.com",
-  "homepage": "https://electron-vite.org",
+  "author": "dev-youtube-h",
+  "homepage": "https://github.com/dev-youtube-h/cursor-marker",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",
@@ -43,5 +43,9 @@
     "react-dom": "^19.2.1",
     "typescript": "^5.9.3",
     "vite": "^7.2.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dev-youtube-h/cursor-marker.git"
   }
 }

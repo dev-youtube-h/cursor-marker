@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -57,10 +57,8 @@ function createControlWindow(): void {
     app.quit()
   })
 
-  controlWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
-    return { action: 'deny' }
-  })
+  // アプリ内にリンクは無いので、新規ウィンドウ要求はすべて拒否する
+  controlWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     controlWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
@@ -77,15 +75,28 @@ function setControlHeight(height: number): void {
   controlWindow.setResizable(false)
 }
 
+/**
+ * グローバル入力フックは「マーカー ON」かつ「クリック時に光る ON」のときだけ動かす。
+ * OS 全体の入力を拾う仕組みなので、必要ないときは止めておく。
+ */
+function applyHookState(): void {
+  const settings = getSettings()
+  if (clickFlashSupported && settings.enabled && settings.clickFlash) {
+    startHook()
+  } else {
+    stopHook()
+  }
+}
+
 function applyEnabled(enabled: boolean): void {
   if (enabled) {
     startTracking()
-    if (clickFlashSupported) startHook()
     setOverlayVisible(true)
   } else {
     stopTracking()
     setOverlayVisible(false)
   }
+  applyHookState()
 }
 
 app.whenReady().then(async () => {
@@ -117,6 +128,7 @@ app.whenReady().then(async () => {
       const next = updateSettings(patch)
       pushSettings()
       if (next.enabled !== before) applyEnabled(next.enabled)
+      else applyHookState()
       return next
     }
   )
