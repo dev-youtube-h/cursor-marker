@@ -3,7 +3,7 @@ import { join } from 'path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { getSettings, saveSettings, updateSettings } from './settings'
-import { createOverlay, pushClick, pushCursor, pushSettings, setOverlayVisible } from './overlay'
+import { createOverlays, pushClick, pushCursor, pushSettings, setOverlayVisible } from './overlay'
 import {
   initHook,
   setTrackerHandlers,
@@ -140,7 +140,7 @@ app.whenReady().then(async () => {
   ipcMain.on('window:minimize', () => controlWindow?.minimize())
   ipcMain.on('window:close', () => controlWindow?.close())
 
-  createOverlay()
+  createOverlays()
   createControlWindow()
   applyEnabled(getSettings().enabled)
 

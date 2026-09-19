@@ -1,45 +1,41 @@
-import { BrowserWindow, Rectangle, screen } from 'electron'
+import { BrowserWindow, Display, screen } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { getSettings } from './settings'
 
 /**
- * 全ディスプレイを覆う透明・クリックスルーのオーバーレイウィンドウ。
+ * 透明・クリックスルーのオーバーレイウィンドウ。
+ *
+ * 全ディスプレイを 1 枚の巨大なウィンドウで覆うと、Windows では
+ * プライマリディスプレイの作業領域までサイズが切り詰められてしまう
+ * (3 画面 7040x1440 に対して 2560x1392 になった)。
+ * そのため **ディスプレイごとに 1 枚** 作り、カーソルがいる画面にだけ座標を送る。
+ * ディスプレイごとの DPI もこの方が正しく扱える。
+ *
  * ウィンドウ自体は動かさず、中のマーカーを transform で動かす (この方が圧倒的に滑らか)。
  */
 
-let overlay: BrowserWindow | null = null
-let origin = { x: 0, y: 0 }
-let ready = false
-
-/** 全ディスプレイを内包する矩形 (DIP) */
-function desktopBounds(): Rectangle {
-  let minX = Infinity
-  let minY = Infinity
-  let maxX = -Infinity
-  let maxY = -Infinity
-
-  for (const display of screen.getAllDisplays()) {
-    const b = display.bounds
-    minX = Math.min(minX, b.x)
-    minY = Math.min(minY, b.y)
-    maxX = Math.max(maxX, b.x + b.width)
-    maxY = Math.max(maxY, b.y + b.height)
-  }
-
-  if (!Number.isFinite(minX)) {
-    const primary = screen.getPrimaryDisplay().bounds
-    return { ...primary }
-  }
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+type Overlay = {
+  win: BrowserWindow
+  displayId: number
+  origin: { x: number; y: number }
+  ready: boolean
 }
 
-export function createOverlay(): BrowserWindow {
-  const bounds = desktopBounds()
-  origin = { x: bounds.x, y: bounds.y }
+let overlays: Overlay[] = []
+/** いまカーソルがいるディスプレイ */
+let activeDisplayId: number | null = null
+let visible = false
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
-  overlay = new BrowserWindow({
-    ...bounds,
+function createOverlayFor(display: Display): Overlay {
+  const { x, y, width, height } = display.bounds
+
+  const win = new BrowserWindow({
+    x,
+    y,
+    width,
+    height,
     show: false,
     frame: false,
     transparent: true,
@@ -63,67 +59,105 @@ export function createOverlay(): BrowserWindow {
   })
 
   // マウスイベントを一切拾わない = 下のウィンドウを普通に操作できる
-  overlay.setIgnoreMouseEvents(true)
-  overlay.setAlwaysOnTop(true, 'screen-saver')
-  overlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  win.setIgnoreMouseEvents(true)
+  win.setAlwaysOnTop(true, 'screen-saver')
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  // 作業領域に切り詰められることがあるので、生成後にもう一度だけ指定する
+  win.setBounds({ x, y, width, height })
 
-  overlay.webContents.on('did-finish-load', () => {
-    ready = true
-    pushSettings()
+  const overlay: Overlay = { win, displayId: display.id, origin: { x, y }, ready: false }
+
+  win.webContents.on('did-finish-load', () => {
+    overlay.ready = true
+    win.webContents.send('marker:settings', getSettings())
+    // マウスを動かさなくてもマーカーが出るように、現在位置を一度送る
+    pushCurrentCursor()
   })
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    overlay.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/overlay.html`)
+    win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/overlay.html`)
   } else {
-    overlay.loadFile(join(__dirname, '../renderer/overlay.html'))
+    win.loadFile(join(__dirname, '../renderer/overlay.html'))
   }
-
-  const refresh = (): void => refreshBounds()
-  screen.on('display-added', refresh)
-  screen.on('display-removed', refresh)
-  screen.on('display-metrics-changed', refresh)
-
-  overlay.on('closed', () => {
-    overlay = null
-    ready = false
-    screen.off('display-added', refresh)
-    screen.off('display-removed', refresh)
-    screen.off('display-metrics-changed', refresh)
-  })
 
   return overlay
 }
 
-/** ディスプレイ構成が変わったら覆う範囲を作り直す */
-export function refreshBounds(): void {
-  if (!overlay) return
-  const bounds = desktopBounds()
-  origin = { x: bounds.x, y: bounds.y }
-  overlay.setBounds(bounds)
+function destroyOverlays(): void {
+  for (const overlay of overlays) {
+    if (!overlay.win.isDestroyed()) overlay.win.destroy()
+  }
+  overlays = []
+  activeDisplayId = null
 }
 
-export function setOverlayVisible(visible: boolean): void {
-  if (!overlay) return
-  if (visible) {
-    // showInactive: フォーカスを奪わずに表示する
-    overlay.showInactive()
-    overlay.setAlwaysOnTop(true, 'screen-saver')
-  } else {
-    overlay.hide()
+export function createOverlays(): void {
+  destroyOverlays()
+  overlays = screen.getAllDisplays().map(createOverlayFor)
+  if (visible) setOverlayVisible(true)
+
+  if (refreshTimer === null) {
+    const refresh = (): void => {
+      // display-metrics-changed は連続して飛んでくるのでまとめる
+      if (refreshTimer) clearTimeout(refreshTimer)
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null
+        createOverlays()
+      }, 300)
+    }
+    screen.on('display-added', refresh)
+    screen.on('display-removed', refresh)
+    screen.on('display-metrics-changed', refresh)
   }
 }
 
+export function setOverlayVisible(next: boolean): void {
+  visible = next
+  for (const overlay of overlays) {
+    if (next) {
+      // showInactive: フォーカスを奪わずに表示する
+      overlay.win.showInactive()
+      overlay.win.setAlwaysOnTop(true, 'screen-saver')
+    } else {
+      overlay.win.hide()
+    }
+  }
+  if (next) pushCurrentCursor()
+  else activeDisplayId = null
+}
+
 export function pushCursor(x: number, y: number): void {
-  if (!overlay || !ready) return
-  overlay.webContents.send('marker:cursor', x - origin.x, y - origin.y)
+  if (!visible || overlays.length === 0) return
+
+  const display = screen.getDisplayNearestPoint({ x: Math.round(x), y: Math.round(y) })
+
+  if (activeDisplayId !== null && activeDisplayId !== display.id) {
+    // 画面をまたいだので、前の画面のマーカーは消す
+    const previous = overlays.find((o) => o.displayId === activeDisplayId)
+    if (previous?.ready) previous.win.webContents.send('marker:leave')
+  }
+  activeDisplayId = display.id
+
+  const current = overlays.find((o) => o.displayId === display.id)
+  if (current?.ready) {
+    current.win.webContents.send('marker:cursor', x - current.origin.x, y - current.origin.y)
+  }
+}
+
+/** いまのカーソル位置を一度だけ送る (起動直後・表示直後用) */
+export function pushCurrentCursor(): void {
+  const point = screen.getCursorScreenPoint()
+  pushCursor(point.x, point.y)
 }
 
 export function pushClick(): void {
-  if (!overlay || !ready) return
-  overlay.webContents.send('marker:click')
+  if (!visible || activeDisplayId === null) return
+  const current = overlays.find((o) => o.displayId === activeDisplayId)
+  if (current?.ready) current.win.webContents.send('marker:click')
 }
 
 export function pushSettings(): void {
-  if (!overlay || !ready) return
-  overlay.webContents.send('marker:settings', getSettings())
+  for (const overlay of overlays) {
+    if (overlay.ready) overlay.win.webContents.send('marker:settings', getSettings())
+  }
 }

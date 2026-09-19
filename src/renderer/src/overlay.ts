@@ -72,6 +72,13 @@ window.api.marker.onCursor((x, y) => {
   }
 })
 
+window.api.marker.onLeave(() => {
+  // カーソルが別のディスプレイへ移ったので、この画面のマーカーは消す
+  hasSample = false
+  flashActive = false
+  root.classList.remove('is-ready')
+})
+
 window.api.marker.onClick(() => {
   if (!settings?.clickFlash) return
   flashStart = performance.now()

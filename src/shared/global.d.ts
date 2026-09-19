@@ -28,6 +28,8 @@ declare global {
     onCursor: (cb: (x: number, y: number) => void) => () => void
     /** オーバーレイ用: グローバルクリック */
     onClick: (cb: () => void) => () => void
+    /** オーバーレイ用: カーソルが別のディスプレイへ移った (マーカーを消す) */
+    onLeave: (cb: () => void) => () => void
     /** 設定パネルの開閉に合わせてウィンドウ高さを変える */
     setPanelOpen: (open: boolean) => void
     minimize: () => void
